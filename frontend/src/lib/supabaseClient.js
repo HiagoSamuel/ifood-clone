@@ -1,0 +1,25 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+const isValidSupabaseUrl = (value) =>
+  typeof value === 'string' &&
+  /^https?:\/\//i.test(value) &&
+  !value.includes('<') &&
+  !value.includes('>') &&
+  !value.includes('seu-projeto')
+
+const hasValidAnonKey = (key) =>
+  typeof key === 'string' &&
+  key.startsWith('sb_publishable_') &&
+  !key.includes('SEU_VALOR')
+
+export const supabaseConfigValid =
+  isValidSupabaseUrl(supabaseUrl) && hasValidAnonKey(supabaseAnonKey)
+
+export const supabase = supabaseConfigValid
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
+
+export const backendApiUrl = import.meta.env.VITE_API_URL || '/api'
