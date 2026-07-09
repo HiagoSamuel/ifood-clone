@@ -1,0 +1,11 @@
+{
+  "name": "ifood-clone",
+  "private": true,
+  "scripts": {
+    "railway:build": "npm --prefix backend ci",
+    "railway:start": "npm --prefix backend start"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
