@@ -22,4 +22,18 @@ export const supabase = supabaseConfigValid
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null
 
-export const backendApiUrl = import.meta.env.VITE_API_URL || '/api'
+const normalizeBackendApiUrl = (value) => {
+  const apiUrl = String(value || '').trim()
+
+  if (!apiUrl) {
+    return '/api'
+  }
+
+  if (apiUrl.startsWith('/') || /^https?:\/\//i.test(apiUrl)) {
+    return apiUrl.replace(/\/$/, '')
+  }
+
+  return `https://${apiUrl.replace(/\/$/, '')}`
+}
+
+export const backendApiUrl = normalizeBackendApiUrl(import.meta.env.VITE_API_URL)
