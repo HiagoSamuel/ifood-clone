@@ -187,6 +187,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/', (req, res) => {
+  res.json({
+    name: 'ifood-clone-backend',
+    status: 'ok',
+    health: '/health',
+  });
+});
+
 app.get('/restaurants', async (req, res) => {
   const filters = parseRestaurantFilters(req.query);
   const sortOption = restaurantSortOptions[filters.sort];
