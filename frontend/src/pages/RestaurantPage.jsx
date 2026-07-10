@@ -116,7 +116,7 @@ function RestaurantPage() {
           <div className="restaurant-meta">
             <span>
               {restaurant.review_count
-                ? `${Number(restaurant.average_rating || restaurant.rating).toFixed(1)} · ${restaurant.review_count} avaliacoes`
+                ? `${Number(restaurant.average_rating).toFixed(1)} · ${restaurant.review_count} avaliacoes`
                 : 'Novo'}
             </span>
             <span>Taxa R$ {Number(restaurant.delivery_fee).toFixed(2)}</span>

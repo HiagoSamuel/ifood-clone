@@ -10,6 +10,7 @@ import OrderDetailPage from './pages/OrderDetailPage'
 import PaymentPage from './pages/PaymentPage'
 import SellerChatPage from './pages/SellerChatPage'
 import AddressesPage from './pages/AddressesPage'
+import AdminPage from './pages/AdminPage'
 import { useCart } from './context/CartContext'
 import './App.css'
 
@@ -773,7 +774,7 @@ function App() {
         <div className="restaurant-meta">
           <span>
             {restaurant.review_count
-              ? `${Number(restaurant.average_rating || restaurant.rating).toFixed(1)} · ${restaurant.review_count} avaliacoes`
+              ? `${Number(restaurant.average_rating).toFixed(1)} · ${restaurant.review_count} avaliacoes`
               : 'Novo'}
           </span>
           <span>{restaurant.category}</span>
@@ -1213,6 +1214,7 @@ function App() {
         <Route path="/pedidos/:orderId" element={<OrderDetailPage />} />
         <Route path="/pedidos/:orderId/pagamento" element={<PaymentPage />} />
         <Route path="/pedidos/:orderId/chat" element={<SellerChatPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={homePage} />
       </Routes>
 
@@ -1305,6 +1307,7 @@ function ProfileDrawer({ user, profilePhoto, onClose, onNavigate, onLogout }) {
     { label: 'Favoritos', path: '/favoritos' },
     { label: 'Meus enderecos', path: '/enderecos' },
     { label: 'Pagamento', path: '/pagamento' },
+    { label: 'Painel do restaurante', path: '/admin' },
     { label: 'Fidelidade', path: '/fidelidade' },
     { label: 'Ajuda', path: '/ajuda' },
     { label: 'Meus dados', path: '/profile' },

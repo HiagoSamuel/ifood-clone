@@ -7,8 +7,21 @@ create table if not exists public.restaurants (
   estimated_time_min integer default 30,
   image_url text,
   rating numeric(2,1) default 4.5,
+  owner_user_id uuid references auth.users(id) on delete set null,
   created_at timestamptz default now()
 );
+
+comment on column public.restaurants.rating is
+  'Legacy seed value. The app should prefer the real review average returned by the backend.';
+
+alter table public.restaurants
+  add column if not exists owner_user_id uuid references auth.users(id) on delete set null;
+
+comment on column public.restaurants.owner_user_id is
+  'User who owns this restaurant in the restaurant admin panel.';
+
+create index if not exists restaurants_owner_user_id_idx
+  on public.restaurants(owner_user_id);
 
 delete from public.restaurants duplicate
 using public.restaurants kept

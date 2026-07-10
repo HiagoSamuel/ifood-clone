@@ -118,8 +118,11 @@ function applyReviewStatsToRestaurants(restaurants, reviews = []) {
     if (!stats?.count) {
       return {
         ...restaurant,
+        rating: null,
         review_count: 0,
+        total_reviews: 0,
         average_rating: null,
+        is_new: true,
       };
     }
 
@@ -130,6 +133,8 @@ function applyReviewStatsToRestaurants(restaurants, reviews = []) {
       rating: averageRating,
       average_rating: averageRating,
       review_count: stats.count,
+      total_reviews: stats.count,
+      is_new: false,
     };
   });
 }
@@ -388,6 +393,19 @@ async function getAuthenticatedUser(req) {
   }
 
   return data.user;
+}
+
+async function getOwnedRestaurants(userId) {
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('id, name')
+    .eq('owner_user_id', userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
 }
 
 function normalizeOrder(order) {
@@ -649,6 +667,92 @@ app.delete('/addresses/:addressId', async (req, res) => {
   } catch (error) {
     console.error('Erro no DELETE /addresses/:addressId:', error.message || error);
     res.status(error.status || 500).json({ error: error.message || 'Erro ao remover endereco.' });
+  }
+});
+
+app.get('/admin/orders', async (req, res) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    const ownedRestaurants = await getOwnedRestaurants(user.id);
+    const ownedRestaurantIds = ownedRestaurants.map((restaurant) => restaurant.id);
+
+    if (!ownedRestaurantIds.length) {
+      return res.json([]);
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, restaurants(name), order_items(*)')
+      .in('restaurant_id', ownedRestaurantIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    res.json((data || []).map(normalizeOrder));
+  } catch (error) {
+    console.error('Erro no GET /admin/orders:', error.message || error);
+    res.status(error.status || 500).json({ error: error.message || 'Erro ao buscar pedidos do restaurante.' });
+  }
+});
+
+app.patch('/admin/orders/:orderId/status', async (req, res) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    const requestedStatus = String(req.body?.status || '').trim();
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('*, restaurants(name, owner_user_id), order_items(*)')
+      .eq('id', req.params.orderId)
+      .limit(1)
+      .single();
+
+    if (orderError || !order) {
+      return res.status(404).json({ error: 'Pedido nao encontrado.' });
+    }
+
+    const restaurant = Array.isArray(order.restaurants) ? order.restaurants[0] : order.restaurants;
+    if (!restaurant || restaurant.owner_user_id !== user.id) {
+      return res.status(403).json({ error: 'Voce nao administra o restaurante deste pedido.' });
+    }
+
+    const nextStatus = getNextOrderStatus(order.status);
+    if (!nextStatus) {
+      return res.status(400).json({ error: 'Este pedido nao pode avancar de status.' });
+    }
+
+    if (requestedStatus && requestedStatus !== nextStatus) {
+      return res.status(400).json({
+        error: `Transicao invalida. O proximo status permitido e ${nextStatus}.`,
+      });
+    }
+
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from('orders')
+      .update({ status: nextStatus })
+      .eq('id', order.id)
+      .eq('status', order.status)
+      .select('*, restaurants(name), order_items(*)')
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    registerWebhookEvent('admin_entrega', {
+      orderId: order.id,
+      restaurantId: order.restaurant_id,
+      ownerUserId: user.id,
+      from: order.status,
+      to: nextStatus,
+    });
+
+    res.json(normalizeOrder(updatedOrder));
+  } catch (error) {
+    console.error('Erro no PATCH /admin/orders/:orderId/status:', error.message || error);
+    res.status(error.status || 500).json({ error: error.message || 'Erro ao avancar status do pedido.' });
   }
 });
 
@@ -993,39 +1097,8 @@ app.patch('/orders/:orderId/payment', async (req, res) => {
 
 app.patch('/orders/:orderId/status', async (req, res) => {
   try {
-    const user = await getAuthenticatedUser(req);
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select('*, restaurants(name)')
-      .eq('id', req.params.orderId)
-      .eq('user_id', user.id)
-      .limit(1)
-      .single();
-
-    if (orderError || !order) {
-      return res.status(404).json({ error: 'Pedido nao encontrado.' });
-    }
-
-    const nextStatus = getNextOrderStatus(order.status);
-    if (!nextStatus) {
-      return res.status(400).json({ error: 'Este pedido nao pode avancar de status.' });
-    }
-
-    const { data: updatedOrder, error: updateError } = await supabase
-      .from('orders')
-      .update({ status: nextStatus })
-      .eq('id', order.id)
-      .eq('status', order.status)
-      .select('*, restaurants(name)')
-      .single();
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    registerWebhookEvent('entrega', { orderId: order.id, userId: user.id, from: order.status, to: nextStatus });
-
-    res.json(normalizeOrder(updatedOrder));
+    await getAuthenticatedUser(req);
+    res.status(403).json({ error: 'Status do pedido agora so pode ser alterado pelo painel do restaurante.' });
   } catch (error) {
     console.error('Erro no PATCH /orders/:orderId/status:', error.message || error);
     res.status(error.status || 500).json({ error: error.message || 'Erro ao avancar status.' });

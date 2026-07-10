@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { backendApiUrl, supabase } from '../lib/supabaseClient'
 
@@ -70,7 +70,6 @@ function OrderDetailPage() {
   const [state, setState] = useState('loading')
   const [message, setMessage] = useState('')
   const [toast, setToast] = useState('')
-  const [advanceState, setAdvanceState] = useState('idle')
   const [refundState, setRefundState] = useState('idle')
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
@@ -164,40 +163,6 @@ function OrderDetailPage() {
     const timeoutId = window.setTimeout(() => setToast(''), 3500)
     return () => window.clearTimeout(timeoutId)
   }, [toast])
-
-  const nextStatusLabel = useMemo(() => {
-    if (!order) {
-      return null
-    }
-
-    const currentIndex = statusSteps.findIndex((step) => step.value === order.status)
-    return statusSteps[currentIndex + 1]?.label || null
-  }, [order])
-
-  const advanceStatus = async () => {
-    setAdvanceState('loading')
-    setMessage('')
-
-    try {
-      const token = await getAccessToken('Faca login para avancar o status.')
-      const response = await fetch(`${backendApiUrl}/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const payload = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Nao foi possivel avancar o status.')
-      }
-
-      setOrder((currentOrder) => ({ ...currentOrder, ...payload }))
-      setToast(`Modo cozinha: pedido agora esta ${payload.status}`)
-    } catch (error) {
-      setMessage(error.message || 'Nao foi possivel avancar o status.')
-    } finally {
-      setAdvanceState('idle')
-    }
-  }
 
   const requestRefund = async () => {
     setRefundState('loading')
@@ -317,18 +282,6 @@ function OrderDetailPage() {
             <h3>Status do pedido</h3>
             <p>Estimativa simples para acompanhar a jornada do pedido.</p>
           </div>
-          <button
-            type="button"
-            className="primary-button"
-            disabled={!nextStatusLabel || advanceState === 'loading'}
-            onClick={advanceStatus}
-          >
-            {advanceState === 'loading'
-              ? 'Avancando...'
-              : nextStatusLabel
-                ? `Modo cozinha: ${nextStatusLabel}`
-                : 'Pedido entregue'}
-          </button>
         </div>
         <StatusTimeline status={order.status} />
       </div>
